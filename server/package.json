@@ -1,16 +1,34 @@
 {
   "name": "habit-tracker",
   "version": "0.0.1",
-  "description": "Simple personal project aka Habit Tracker",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js",
-    "dev": "node --watch index.js"
+    "start": "node dist/index.js",
+    "dev": "node --watch src --exec ts-node src/index.ts",
+    "devTest": "ts-node src/index.ts",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UnderKitten/habit-tracker.git"
   },
   "author": "ChuMax",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/UnderKitten/habit-tracker/issues"
+  },
+  "homepage": "https://github.com/UnderKitten/habit-tracker#readme",
+  "description": "",
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "mongoose": "^8.17.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/mongoose": "^5.11.96",
+    "@types/node": "^24.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
   }
 }
