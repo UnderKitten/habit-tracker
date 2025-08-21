@@ -1,0 +1,16 @@
+{
+  "name": "habit-tracker",
+  "version": "0.0.1",
+  "description": "Simple personal project aka Habit Tracker",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "author": "ChuMax",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
