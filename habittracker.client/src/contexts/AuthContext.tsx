@@ -1,5 +1,10 @@
-import { createContext } from "react";
-import type { AuthResponse } from "../types";
+import { createContext, useReducer, useContext, use, useEffect } from "react";
+import type {
+  AuthResponse,
+  LoginCredentials,
+  RegisterCredentials,
+} from "../types";
+import { authAPI } from "../services/api";
 
 interface AuthState {
   user: { email: string } | null;
@@ -13,7 +18,7 @@ type AuthAction =
   | { type: "SIGN_IN"; payload: AuthResponse }
   | { type: "SIGN_OUT" };
 
-export function authReducer(state: AuthState, action: AuthAction): AuthState {
+function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
     case "RESTORE_TOKEN":
     case "SIGN_IN":
@@ -47,4 +52,30 @@ const initialAuthState: AuthState = {
   token: null,
   isLoading: true,
   isAuthenticated: false,
+};
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [state, dispatch] = useReducer(authReducer, initialAuthState);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const email = localStorage.getItem("email");
+    if (token && email) {
+      dispatch({ type: "RESTORE_TOKEN", payload: { token, email, expiration: "" } });
+    } else {
+      dispatch({ type: "SIGN_OUT" });
+    }
+  }, []);
+  return (
+    <AuthContext.Provider value={{ state, dispatch }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 };
