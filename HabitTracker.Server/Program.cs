@@ -2,12 +2,10 @@ using HabitTracker.Server.Data;
 using HabitTracker.Server.DTOs;
 using HabitTracker.Server.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Security.Claims;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,7 +19,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Enter your JWT token"
+        Description = "Enter your Auth0 JWT token WITHOUT the 'Bearer ' prefix"
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -40,60 +38,25 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Add DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-// Add Identity
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
 
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.Events.OnRedirectToLogin = context =>
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        return Task.CompletedTask;
-    };
-});
-
-// Configure JWT Authentication
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-    };
-});
+        options.Authority = $"https://{builder.Configuration["Auth0:Domain"]}";
+        options.Audience = builder.Configuration["Auth0:Audience"];
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            NameClaimType = "sub"
+        };
+    });
 
 builder.Services.AddAuthorization();
 
-// Add CORS
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
-});
-
-// Add AuthService, HabitService
-builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IHabitService, HabitService>();
 
 var app = builder.Build();
@@ -105,7 +68,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -114,30 +76,6 @@ app.MapStaticAssets();
 
 string? GetUserId(HttpContext context) =>
     context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-app.MapPost("/api/auth/register", async (RegisterDto dto, IAuthService authService) =>
-{
-    AuthResponseDto? result = await authService.RegisterAsync(dto);
-
-    if (result == null)
-    {
-        return Results.BadRequest("Registration Failed");
-    }
-
-    return Results.Ok(result);
-});
-
-app.MapPost("/api/auth/login", async (LoginDto dto, IAuthService authService) =>
-{
-    AuthResponseDto? result = await authService.LoginAsync(dto);
-
-    if (result == null)
-    {
-        return Results.BadRequest("Login Failed");
-    }
-
-    return Results.Ok(result);
-});
 
 RouteGroupBuilder habitsGroup = app.MapGroup("/api/habits")
     .RequireAuthorization();
